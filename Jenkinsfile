@@ -29,18 +29,25 @@ pipeline {
             }
         }
 
-        stage('Deploy NGINX Load Balancer') {
+        stage('Deploy Backend Containers') {
             steps {
                 sh '''
-                docker rm -f nginx-lb || true
+                # Remove old containers first
+                docker rm -f backend1 backend2 nginx-lb || true
 
-                docker run -d \
-                  --name nginx-lb \
-                  --network app-network \
-                  -p 80:80 \
-                  -v $(pwd)/nginx/default.conf:/etc/nginx/conf.d/default.conf \
-                  nginx
-                '''
+                # Remove old network
+                docker network rm app-network || true
+
+                # Create fresh network
+                docker network create app-network
+
+                # Start backend containers
+                docker run -d --name backend1 --network app-network backend-app
+                docker run -d --name backend2 --network app-network backend-app
+
+                echo "Waiting for backend to start..."
+                sleep 5
+            '''
             }
         }
     }
